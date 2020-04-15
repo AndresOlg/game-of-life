@@ -1,12 +1,7 @@
-# cobol-worker
+# game-of-life
 
-## Play
-
-The possible picks are `rock`, `scissors` and `paper`.
-
-```sh
-curl -d "pick=rock" https://cobol.speedcf.com/api | jq .
-```
+An implementation of Conway's Game of Life in COBOL to be deployed as a 
+Cloudflare Worker.
 
 ## Deploy
 
