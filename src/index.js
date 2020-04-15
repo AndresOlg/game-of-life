@@ -16,7 +16,7 @@ function parseParams(str) {
 
 async function readBody(body) {
   const reader = body.getReader();
-  let chunks = []; 
+  let chunks = [];
   while(true) {
     const {done, value} = await reader.read();
 
@@ -29,24 +29,14 @@ async function readBody(body) {
 }
 
 async function handleRequest(request) {
-  const values = {
-    rock: 1,
-    scissors: 2,
-    paper: 3,
-  };
-
   globalThis.response = {
-    status: 0,
+    status: 200,
     body: "",
   };
 
   let params = {};
   if (request.body) {
      params = parseParams(await readBody(request.body));
-  }
-  let pick = 0;
-  if (values[params.pick] !== undefined) {
-    params.pick = values[params.pick];
   }
 
   globalThis.request = {
@@ -77,12 +67,9 @@ async function handleRequest(request) {
       }
     }
 
-    console.log(globalThis.request, globalThis.response);
     return new Response(globalThis.response.body, {
-      status: globalThis.response.status,
-      headers: {
-        "Content-Type": "application/json"
-      }
+	status: globalThis.response.status,
+	headers: {'Content-Type': 'text/html'}
     });
   } catch (e) {
     console.log(e);
