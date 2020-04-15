@@ -2,87 +2,100 @@
        PROGRAM-ID. worker.
        DATA DIVISION.
        WORKING-STORAGE SECTION.
-           01 RAND-NUM PIC 9(2).
-           01 CURRENT-TIME.
-                  05 T-HOURS PIC 99.
-                  05 T-MINS PIC 99.
-                  05 T-SECS PIC 99.
-                  05 T-MS PIC 999.
-           01 PLAYER-CHOICE PIC X(8) VALUE ZERO.
-           01 COMPUTER-CHOICE PIC X(10) VALUE ZERO.
-           01 CHOICE-IND PIC 9.
-           01 BLAH PIC 99.
-           01 HTTP-OK PIC A(3) VALUE '200'.
-           01 HTTP-BAD-REQUEST PIC A(3) VALUE '400'.
-           01 ERROR-NO-INPUT PIC A(24) VALUE 'please provide your pick'.
-           01 ARG-VALUE PIC S9(9) BINARY.
-           01 ARG-NAME PIC A(4) VALUE 'pick'.
-           01 ROCK PIC A(8) VALUE 'rock'.
-           01 SCISSORS PIC A(8) VALUE 'scissors'.
-           01 PAPER PIC A(8) VALUE 'paper'.
-           01 CHOICES.
-                  05 CHOICE PIC A(8) OCCURS 3 TIMES.
-           01 RESULT PIC X(24) VALUE "lose".
+       01 PARAM-NAME PIC X(7).
+       01 PARAM-VALUE PIC 9(10).
+       01 PARAM-OUTPUT PIC X(10).
+       01 PARAM PIC 9(10) BINARY.
+       01 PARAM-COUNTER PIC 9(2) VALUE 0.
+       01 DREW PIC 9 VALUE 0.
+       01 TOTAL-ROWS PIC 9(2) VALUE 20.
+       01 TOTAL-COLUMNS PIC 9(2) VALUE 15.
+       01 ROW-COUNTER PIC 9(2) VALUE 0.
+       01 COLUMN-COUNTER PIC 9(2) VALUE 0.
+       01 OLD-WORLD PIC X(300).
+       01 NEW-WORLD PIC X(300).
+       01 CELL PIC X(1) VALUE "0".
+       01 X PIC 9(2) VALUE 0.
+       01 Y PIC 9(2) VALUE 0.
+       01 POS PIC 9(3).
+       01 ROW-OFFSET PIC S9.
+       01 COLUMN-OFFSET PIC S9.
+       01 NEIGHBORS PIC 9 VALUE 0.
        PROCEDURE DIVISION.
-           CALL "get_http_form" USING ARG-NAME RETURNING ARG-VALUE.
-           EVALUATE TRUE
-               WHEN ARG-VALUE = 1
-                   MOVE 'rock' TO PLAYER-CHOICE
-               WHEN ARG-VALUE = 2
-                   MOVE 'scissors' TO PLAYER-CHOICE
-               WHEN ARG-VALUE = 3
-                   MOVE 'paper' TO PLAYER-CHOICE
-               WHEN OTHER
-                   MOVE ERROR-NO-INPUT TO RESULT
-                   PERFORM RETURN-ERROR
-                   STOP RUN
-           END-EVALUATE
-           DISPLAY "player: " PLAYER-CHOICE
-           MOVE ROCK TO CHOICE(1).
-           MOVE SCISSORS TO CHOICE(2).
-           MOVE PAPER TO CHOICE(3).
-           ACCEPT CURRENT-TIME FROM TIME.
-           COMPUTE RAND-NUM = FUNCTION RANDOM (T-MS) * 100.
-           DIVIDE RAND-NUM BY 3 GIVING BLAH REMAINDER CHOICE-IND.
-           MOVE CHOICE(CHOICE-IND + 1) TO COMPUTER-CHOICE.
-           IF PLAYER-CHOICE = COMPUTER-CHOICE
-               MOVE "tie" TO RESULT
-           END-IF.
-           IF PLAYER-CHOICE = 'rock' AND COMPUTER-CHOICE = 'scissors'
-               MOVE "win" TO RESULT
-           END-IF.
-           IF PLAYER-CHOICE = 'scissors' AND COMPUTER-CHOICE = 'paper'
-               MOVE "win" TO RESULT
-           END-IF.
-           IF PLAYER-CHOICE = 'paper' AND COMPUTER-CHOICE = 'rock'
-               MOVE "win" TO RESULT
-           END-IF.
-           CALL "set_http_status" USING HTTP-OK.
-           PERFORM SEND-JSON.
+           CALL "get_http_form" USING "state" RETURNING PARAM.
+	   IF PARAM = 1 THEN
+	      PERFORM VARYING PARAM-COUNTER FROM 1 BY 1 UNTIL PARAM-COUNTER > 30
+	         STRING "state" PARAM-COUNTER INTO PARAM-NAME
+	         CALL "get_http_form" USING PARAM-NAME RETURNING PARAM-VALUE
+		 COMPUTE POS = (PARAM-COUNTER - 1) * 10 + 1
+		 MOVE PARAM-VALUE TO NEW-WORLD(POS:10)
+	      END-PERFORM
+ 	  ELSE
+	    MOVE "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001110000000000001010000000000001010000000000000100000000000101110000000000010101000000000000100100000000001010000000000001010000000000000000000000000000000000000000000000000000000000000000000" TO NEW-WORLD.
+           PERFORM PRINT-WORLD.
+           MOVE NEW-WORLD TO OLD-WORLD.
+           PERFORM VARYING ROW-COUNTER FROM 1 BY 1 UNTIL ROW-COUNTER > TOTAL-ROWS
+               PERFORM ITERATE-CELL VARYING COLUMN-COUNTER FROM 1 BY 1 UNTIL COLUMN-COUNTER > TOTAL-COLUMNS
+	   END-PERFORM.
+	   PERFORM PRINT-FORM.
            STOP RUN.
-       RETURN-ERROR.
-           CALL "set_http_status" USING HTTP-BAD-REQUEST
-           PERFORM SEND-JSON.
-       SEND-JSON.
-           CALL "append_http_body" USING "{"
-           CALL "append_http_body" USING '"result":'
-           CALL "append_http_body" USING '"'
-           CALL "append_http_body" USING RESULT
-           CALL "append_http_body" USING '"'
-           CALL "append_http_body" USING ',"player":'
-           IF PLAYER-CHOICE = ZERO
-               CALL "append_http_body" USING "null"
-           ELSE
-               CALL "append_http_body" USING '"'
-               CALL "append_http_body" USING PLAYER-CHOICE
-               CALL "append_http_body" USING '"'
-           END-IF.
-           CALL "append_http_body" USING ',"computer":'
-           IF COMPUTER-CHOICE = ZERO
-               CALL "append_http_body" USING "null"
-           ELSE
-               CALL "append_http_body" USING '"'
-               CALL "append_http_body" USING COMPUTER-CHOICE
-               CALL "append_http_body" USING '"'
-           END-IF.
-           CALL "append_http_body" USING "}".
+       ITERATE-CELL.
+           PERFORM COUNT-NEIGHBORS.
+	   COMPUTE POS = (ROW-COUNTER - 1) * TOTAL-COLUMNS + COLUMN-COUNTER.
+           MOVE OLD-WORLD(POS:1) TO CELL.
+           IF CELL = "1" AND NEIGHBORS < 2 THEN
+               MOVE "0" TO NEW-WORLD(POS:1).
+           IF CELL = "1" AND (NEIGHBORS = 2 OR NEIGHBORS = 3) THEN
+               MOVE "1" TO NEW-WORLD(POS:1).
+           IF CELL = "1" AND NEIGHBORS > 3 THEN
+               MOVE "0" TO NEW-WORLD(POS:1).
+           IF CELL = "0" AND NEIGHBORS = 3 THEN
+               MOVE "1" TO NEW-WORLD(POS:1).
+       COUNT-NEIGHBORS.
+           MOVE 0 TO NEIGHBORS.
+	   PERFORM COUNT-NEIGHBOR
+	       VARYING ROW-OFFSET FROM -1 BY 1 UNTIL ROW-OFFSET > 1
+	          AFTER COLUMN-OFFSET FROM -1 BY 1 UNTIL COLUMN-OFFSET > 1.
+       COUNT-NEIGHBOR.
+           IF ROW-OFFSET <> 0 OR COLUMN-OFFSET <> 0 THEN
+               COMPUTE Y = ROW-COUNTER + ROW-OFFSET
+               COMPUTE X = COLUMN-COUNTER + COLUMN-OFFSET
+               IF X >= 1 AND X <= TOTAL-ROWS AND Y >= 1 AND Y <= TOTAL-COLUMNS THEN
+	       	   COMPUTE POS = (Y - 1) * TOTAL-COLUMNS + X
+                   MOVE OLD-WORLD(POS:1) TO CELL
+		   IF CELL = "1" THEN
+		      COMPUTE NEIGHBORS = NEIGHBORS + 1.
+       PRINT-FORM.
+           CALL "append_http_body" USING "<form name=frm1 method=POST><input type=hidden name=state value=".
+	   CALL "append_http_body" USING DREW.
+	   CALL "append_http_body" USING ">".
+	   PERFORM VARYING PARAM-COUNTER FROM 1 BY 1 UNTIL PARAM-COUNTER > 30
+    	       CALL "append_http_body" USING "<input type=hidden name=state"
+	       CALL "append_http_body" USING PARAM-COUNTER
+    	       CALL "append_http_body" USING " value="
+	       COMPUTE POS = (PARAM-COUNTER - 1) * 10 + 1
+	       MOVE NEW-WORLD(POS:10) TO PARAM-OUTPUT
+	       CALL "append_http_body" USING PARAM-OUTPUT
+    	       CALL "append_http_body" USING ">"
+	   END-PERFORM
+           CALL "append_http_body" USING "</form>".
+       PRINT-WORLD.
+           MOVE 0 TO DREW.
+           CALL "set_http_status" USING "200".
+	   CALL "append_http_body" USING "<html><body onload='setTimeout(function() { document.frm1.submit() }, 1000)'>"
+	   CALL "append_http_body" USING "<style>table { background:-color: white; } td { width: 10px; height: 10px}</style>".
+           CALL "append_http_body" USING "<table>".
+           PERFORM PRINT-ROW VARYING ROW-COUNTER FROM 3 BY 1 UNTIL ROW-COUNTER >= TOTAL-ROWS - 1.
+           CALL "append_http_body" USING "</table></body></html>".
+       PRINT-ROW.
+           CALL "append_http_body" USING "<tr>".
+           PERFORM PRINT-CELL VARYING COLUMN-COUNTER FROM 3 BY 1 UNTIL COLUMN-COUNTER >= TOTAL-COLUMNS - 1.
+           CALL "append_http_body" USING "</tr>".
+       PRINT-CELL.
+	   COMPUTE POS = (ROW-COUNTER - 1) * TOTAL-COLUMNS + COLUMN-COUNTER.
+	   MOVE NEW-WORLD(POS:1) TO CELL.
+           IF CELL = "1" THEN
+	       MOVE 1 TO DREW
+               CALL "append_http_body" USING "<td bgcolor=blue></td>".
+           IF CELL = "0" THEN
+               CALL "append_http_body" USING "<td></td>".
