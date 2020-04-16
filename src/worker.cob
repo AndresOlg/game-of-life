@@ -82,8 +82,13 @@
        PRINT-WORLD.
            MOVE 0 TO DREW.
            CALL "set_http_status" USING "200".
-	   CALL "append_http_body" USING "<html><body onload='setTimeout(function() { document.frm1.submit() }, 1000)'>"
-	   CALL "append_http_body" USING "<style>table { background:-color: white; } td { width: 10px; height: 10px}</style>".
+           CALL "append_http_body" USING "<html><body onload='submit()'>"
+           CALL "append_http_body" USING "<script>"
+           CALL "append_http_body" USING "function submit() {"
+           CALL "append_http_body" USING "function urlencodeFormData(fd){ var s = ''; for(var pair of fd.entries()){ s += (s?'&':'') + pair[0]+'='+pair[1]; } return s; } "
+           CALL "append_http_body" USING "fetch('/', { method: 'POST', body: urlencodeFormData(new FormData(document.frm1))}).then(res => res.text()).then(page => { document.body.innerHTML = page; setTimeout(function() { submit() }, 1000)})"
+           CALL "append_http_body" USING "}</script>"
+           CALL "append_http_body" USING "<style>table { background-color: white; } td { width: 10px; height: 10px}</style>".
            CALL "append_http_body" USING "<table>".
            PERFORM PRINT-ROW VARYING ROW-COUNTER FROM 3 BY 1 UNTIL ROW-COUNTER >= TOTAL-ROWS - 1.
            CALL "append_http_body" USING "</table></body></html>".
